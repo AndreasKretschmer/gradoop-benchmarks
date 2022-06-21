@@ -163,8 +163,8 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
 
     // read graph
     TemporalDataSource source = new TemporalCSVDataSource(INPUT_PATH, conf);
-    graph = source.getTemporalGraph();
-    vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
+    TemporalGraph graph = source.getTemporalGraph();
+    // vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
 
     //partition graph
 
