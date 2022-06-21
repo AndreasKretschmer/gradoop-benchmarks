@@ -43,6 +43,16 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @param args program arguments
    * @throws Exception in case of an error
    */
+  private static String PARTITION_STRAT;
+  private static String PART_FIELD;
+  
+  public static void SetPartStrat(String partStrat){
+    PARTITION_STRAT = partStrat;
+  }
+
+  public static void SetPartField(String partField){
+    PART_FIELD = partField;
+  }
   public static void main(String[] args) throws Exception {
     CommandLine cmd = parseArguments(args, PatternMatchingBenchmark.class.getName());
 
@@ -63,6 +73,29 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       "      c.val_from.before(Timestamp(2012-06-02)) AND " +
       "      po.val_from.after(Timestamp(2012-05-30)) AND " +
       "      po.val_from.before(Timestamp(2012-06-02))";
+
+    switch (PARTITION_STRAT) {
+      case "hash":
+        graph.getVertices().partitionByHash(PART_FIELD);
+        break;
+      case "edgeHash":
+        graph.getEdges().partitionByHash(PART_FIELD); //Edge-Cut
+        break;
+      case "range":
+        graph.getVertices().partitionByRange(PART_FIELD);
+        break;
+      case "edgeRange":
+        graph.getEdges().partitionByRange(PART_FIELD);
+        break;
+      case "DBH":
+        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
+        break;
+      case "LDG":
+        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
+        break;
+      default:
+        break;
+    }
 
     TemporalGraphCollection results = graph.temporalQuery(query);
 
@@ -87,9 +120,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @throws IOException exception during file writing
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
-    String head = String.format("%s|%s|%s|%s", "Parallelism", "dataset", "format", "Runtime(s)");
-    String tail = String.format("%s|%s|%s|%s", env.getParallelism(), INPUT_PATH, INPUT_FORMAT,
-      env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS));
+    String head = String.format("%s|%s|%s|%s|%s|%s", "Parallelism", "dataset", "format", "Runtime(s)", "Partition Strategy", "Partitioned Field");
+    String tail = String.format("%s|%s|%s|%s|%s|%s", env.getParallelism(), INPUT_PATH, INPUT_FORMAT,
+      env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
+      PARTITION_STRAT,
+      PART_FIELD);
     writeToCSVFile(head, tail);
   }
 }

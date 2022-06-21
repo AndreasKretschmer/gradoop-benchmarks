@@ -16,7 +16,13 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.gradoop.common.model.impl.id.GradoopId;
+import org.gradoop.flink.model.api.epgm.BaseGraph;
+import org.gradoop.flink.model.api.operators.BinaryBaseGraphToValueOperator;
+import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
+import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.io.api.TemporalDataSource;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSource;
 import org.gradoop.temporal.model.api.functions.TemporalPredicate;
@@ -87,6 +93,10 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    * Option to declare query type
    */
   private static final String OPTION_QUERY_TYPE = "y";
+  /**
+   * Option to declare the partition strategy
+   */
+  private static final String OPTION_PARTITION_STRAT = "p";
 
   /**
    * Used verification flag
@@ -105,11 +115,23 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    */
   private static String QUERY_TYPE;
 
+  private static String PARTITION_STRAT;
+  private static String PART_FIELD;
+
   static {
     OPTIONS.addRequiredOption(OPTION_QUERY_TYPE, "type", true, "Used query type");
     OPTIONS.addOption(OPTION_VERIFICATION, "verification", false, "Verify Snapshot with join.");
     OPTIONS.addOption(OPTION_QUERY_FROM, "from", true, "Used query from timestamp [ms]");
     OPTIONS.addOption(OPTION_QUERY_TO, "to", true, "Used query to timestamp [ms]");
+    OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
+  }
+
+  public static void SetPartStrat(String partStrat){
+    PARTITION_STRAT = partStrat;
+  }
+
+  public static void SetPartField(String partField){
+    PART_FIELD = partField;
   }
 
   /**
@@ -141,7 +163,33 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
 
     // read graph
     TemporalDataSource source = new TemporalCSVDataSource(INPUT_PATH, conf);
-    TemporalGraph graph = source.getTemporalGraph();
+    graph = source.getTemporalGraph();
+    vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
+
+    //partition graph
+
+    switch (PARTITION_STRAT) {
+      case "hash":
+        graph.getVertices().partitionByHash(PART_FIELD);
+        break;
+      case "edgeHash":
+        graph.getEdges().partitionByHash(PART_FIELD); //Edge-Cut
+        break;
+      case "range":
+        graph.getVertices().partitionByRange(PART_FIELD);
+        break;
+      case "edgeRange":
+        graph.getEdges().partitionByRange(PART_FIELD);
+        break;
+      case "DBH":
+        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
+        break;
+      case "LDG":
+        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
+        break;
+      default:
+        break;
+    }
 
     // get temporal predicate
     TemporalPredicate temporalPredicate;
@@ -235,6 +283,8 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
 
     QUERY_TYPE   = cmd.getOptionValue(OPTION_QUERY_TYPE);
     VERIFICATION = cmd.hasOption(OPTION_VERIFICATION);
+
+    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
   }
 
   /**
@@ -253,10 +303,12 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         "to(ms)",
         "verify",
         "count-only",
-        "Runtime(s)");
+        "Runtime(s)",
+        "Part.-Strat.",
+        "Partitioned Field");
 
     String tail = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         env.getParallelism(),
         INPUT_PATH,
         QUERY_TYPE,
@@ -264,7 +316,9 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         QUERY_TO,
         VERIFICATION,
         COUNT_RESULT,
-        env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS));
+        env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
+        PARTITION_STRAT,
+        PART_FIELD);
 
     writeToCSVFile(head, tail);
   }
