@@ -16,15 +16,23 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.Partitioner;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.gradoop.benchmarks.AbstractRunner;
+import org.gradoop.common.model.impl.id.GradoopId;
+import org.gradoop.common.model.impl.properties.PropertyValue;
+import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.flink.util.GradoopFlinkConfig;
 import org.gradoop.temporal.io.api.TemporalDataSink;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.model.impl.TemporalGraph;
+import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
+import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -81,6 +89,8 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Used count only flag. The graph elements will be counted only if this is set to true.
    */
   static boolean COUNT_RESULT;
+
+  // static TemporalGraph graph;
 
   static {
     OPTIONS.addRequiredOption(OPTION_INPUT_PATH, "input", true, "Path to source files.");
@@ -157,4 +167,24 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     Files.write(path, linesToWrite, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
       StandardOpenOption.APPEND);
   }
+
+  public static class DBH implements Partitioner<TemporalEdge>{
+		public int partition(TemporalEdge key, int numPartitions) {
+          PropertyValue SourceDegree = key.getPropertyValue("SourceDegree");
+          PropertyValue TargetDegree = key.getPropertyValue("TargetDegree");
+      
+          if (SourceDegree.getLong() > TargetDegree.getLong()) {
+            return key.getSourceId().hashCode() % numPartitions;
+          }
+          else{
+            return key.getTargetId().hashCode() % numPartitions;
+          }
+		}
+	}
+
+  public static class LDG implements Partitioner<TemporalVertex> {
+		public int partition(TemporalVertex key, int numPartitions) {
+          return key.getId().hashCode() % numPartitions;
+		}
+	}
 }

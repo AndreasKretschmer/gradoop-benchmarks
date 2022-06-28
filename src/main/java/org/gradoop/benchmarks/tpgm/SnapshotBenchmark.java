@@ -16,11 +16,18 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.flink.api.common.functions.*;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.ProjectOperator.Projection;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.gradoop.common.model.impl.id.GradoopId;
+import org.gradoop.common.model.impl.properties.PropertyValue;
 import org.gradoop.flink.model.api.epgm.BaseGraph;
 import org.gradoop.flink.model.api.operators.BinaryBaseGraphToValueOperator;
+import org.gradoop.flink.model.impl.functions.epgm.Id;
+import org.gradoop.flink.model.impl.functions.tuple.Tuple2ToWithCount;
+import org.gradoop.flink.model.impl.operators.count.functions.Tuple2FromTupleWithObjectAnd1L;
 import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
 import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.io.api.TemporalDataSource;
@@ -35,9 +42,13 @@ import org.gradoop.temporal.model.impl.functions.predicates.CreatedIn;
 import org.gradoop.temporal.model.impl.functions.predicates.DeletedIn;
 import org.gradoop.temporal.model.impl.functions.predicates.FromTo;
 import org.gradoop.temporal.model.impl.functions.predicates.ValidDuring;
+import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
+import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 import org.gradoop.temporal.util.TemporalGradoopConfig;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -164,9 +175,40 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     // read graph
     TemporalDataSource source = new TemporalCSVDataSource(INPUT_PATH, conf);
     TemporalGraph graph = source.getTemporalGraph();
-    // vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
+    DataSet<WithCount<GradoopId>> vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
+    DataSet<TemporalVertex> vertexes = graph.getVertices();
+    DataSet<TemporalEdge> edges = graph.getEdges();
+
+   // int numPartitions = env.getParallelism();
+//    vertexes = vertexes.join(vertexDegreeDataSet).where(v -> v.getId()).equalTo(0).with(new JoinFunction<TemporalVertex, WithCount<GradoopId>, TemporalVertex>() {
+//      @Override
+//      public TemporalVertex join(TemporalVertex first, WithCount<GradoopId> second) throws Exception {
+//        first.setProperty("Degree", second.f1);
+//        return first;
+//      }
+//    });
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("SourceDegree", second.f1);
+        return first;
+      }
+    });
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("TargetDegree", second.f1);
+        return first;
+      }
+    });
+
+
+    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
 
     //partition graph
+    if (PART_FIELD == null) {
+      PART_FIELD = "id";
+    }
 
     switch (PARTITION_STRAT) {
       case "hash":
@@ -182,10 +224,24 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         graph.getEdges().partitionByRange(PART_FIELD);
         break;
       case "DBH":
-        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
+//        DataSet<TemporalEdge> broadcast_Edges = graph.getEdges();
+//        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
+//          @Override
+//          public int partition(GradoopId key, int numPartitions) throws Exception {
+//            PropertyValue SourceDegree = key.getPropertyValue("SourceDegree");
+//            PropertyValue TargetDegree = key.getPropertyValue("TargetDegree");
+//
+//            if (SourceDegree.getLong() > TargetDegree.getLong()) {
+//              return key.getSourceId().hashCode() % numPartitions;
+//            }
+//            else{
+//              return key.getTargetId().hashCode() % numPartitions;
+//            }
+//          }
+//        }, "id");
         break;
       case "LDG":
-        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
+        //graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
         break;
       default:
         break;
@@ -284,7 +340,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     QUERY_TYPE   = cmd.getOptionValue(OPTION_QUERY_TYPE);
     VERIFICATION = cmd.hasOption(OPTION_VERIFICATION);
 
-    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
+    // PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
   }
 
   /**

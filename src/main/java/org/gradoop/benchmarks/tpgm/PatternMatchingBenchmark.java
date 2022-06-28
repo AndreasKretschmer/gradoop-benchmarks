@@ -45,7 +45,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    */
   private static String PARTITION_STRAT;
   private static String PART_FIELD;
-  
+  private static String QUERY_STRING;
   public static void SetPartStrat(String partStrat){
     PARTITION_STRAT = partStrat;
   }
@@ -53,6 +53,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
   public static void SetPartField(String partField){
     PART_FIELD = partField;
   }
+  public static void SetQueryString(String queryString) {QUERY_STRING = queryString;}
   public static void main(String[] args) throws Exception {
     CommandLine cmd = parseArguments(args, PatternMatchingBenchmark.class.getName());
 
@@ -66,14 +67,21 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
 
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
 
+    //Query ggf. anpassen => erst mal ohne Timestamps
     String query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) " +
-      "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
-      "      l.val_from.before(Timestamp(2012-06-02)) AND " +
-      "      c.val_from.after(Timestamp(2012-05-30)) AND " +
-      "      c.val_from.before(Timestamp(2012-06-02)) AND " +
-      "      po.val_from.after(Timestamp(2012-05-30)) AND " +
-      "      po.val_from.before(Timestamp(2012-06-02))";
+            "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
+            "      l.val_from.before(Timestamp(2012-06-02)) AND " +
+            "      c.val_from.after(Timestamp(2012-05-30)) AND " +
+            "      c.val_from.before(Timestamp(2012-06-02)) AND " +
+            "      po.val_from.after(Timestamp(2012-05-30)) AND " +
+            "      po.val_from.before(Timestamp(2012-06-02))";
+    if (QUERY_STRING != null){
+      query = QUERY_STRING;
+    }
 
+    if (PART_FIELD == null) {
+      PART_FIELD = "id";
+    }
     switch (PARTITION_STRAT) {
       case "hash":
         graph.getVertices().partitionByHash(PART_FIELD);
@@ -88,10 +96,10 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         graph.getEdges().partitionByRange(PART_FIELD);
         break;
       case "DBH":
-        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
+//        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
         break;
       case "LDG":
-        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
+//        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
         break;
       default:
         break;
@@ -120,11 +128,31 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @throws IOException exception during file writing
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
-    String head = String.format("%s|%s|%s|%s|%s|%s", "Parallelism", "dataset", "format", "Runtime(s)", "Partition Strategy", "Partitioned Field");
-    String tail = String.format("%s|%s|%s|%s|%s|%s", env.getParallelism(), INPUT_PATH, INPUT_FORMAT,
-      env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
-      PARTITION_STRAT,
-      PART_FIELD);
+    String head = String
+      .format("%s|%s|%s|%s|%s|%s|%s|%s",
+        "Parallelism",
+        "dataset",
+        "query-type",
+        "from(ms)",
+        "to(ms)",
+        "verify",
+        "count-only",
+        "Runtime(s)",
+        "Part.-Strat.",
+        "Partitioned Field");
+
+    String tail = String
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+        env.getParallelism(),
+        INPUT_PATH,
+        null,
+        null,
+        null,
+        null,
+        COUNT_RESULT,
+        env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
+        PARTITION_STRAT,
+        PART_FIELD);
     writeToCSVFile(head, tail);
   }
 }
