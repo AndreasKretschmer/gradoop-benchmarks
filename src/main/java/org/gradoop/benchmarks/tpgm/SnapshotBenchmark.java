@@ -179,7 +179,6 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     DataSet<TemporalVertex> vertexes = graph.getVertices();
     DataSet<TemporalEdge> edges = graph.getEdges();
 
-   // int numPartitions = env.getParallelism();
 //    vertexes = vertexes.join(vertexDegreeDataSet).where(v -> v.getId()).equalTo(0).with(new JoinFunction<TemporalVertex, WithCount<GradoopId>, TemporalVertex>() {
 //      @Override
 //      public TemporalVertex join(TemporalVertex first, WithCount<GradoopId> second) throws Exception {
@@ -187,6 +186,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
 //        return first;
 //      }
 //    });
+
     edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
       @Override
       public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
