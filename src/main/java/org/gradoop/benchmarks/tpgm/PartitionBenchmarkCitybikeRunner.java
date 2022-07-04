@@ -7,9 +7,10 @@ public class PartitionBenchmarkCitybikeRunner {
     private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG"};
     private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
 
-    private static final String[] vertex_partition_fields = new String[] {"id"};
-    private static final String[] edge_partition_fields = new String[] {"id"};
-    private static final String[] queries_pattern_matching_citybike = new String[] {"MATCH (s:station)-[t:trip]->(st:station) WHERE t.gender(1) AND t.starttime.before(Timestamp(2018-07-12))"};
+    private static final String[] vertex_partition_fields = new String[] {"id", "properties.name", "properties.regionId"};
+    private static final String[] edge_partition_fields = new String[] {"id", "properties.gender", "properties.bike_id"};
+    private static final String[] queries_pattern_matching_citybike = new String[] {"MATCH (s:station)-[t:trip]->(st:station)->[t2:trip] WHERE t.bike_id(t2.bike_id)",
+            "MATCH (s1:station)->[t1:trip]->(s2:station)->[t2:trip]->(s3:station) WHERE s1.id(s2.id)"};
 
     public static void main(String[] args) throws Exception {
         runSnapshotBenchmark(args);

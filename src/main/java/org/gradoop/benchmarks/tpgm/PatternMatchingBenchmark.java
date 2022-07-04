@@ -67,7 +67,6 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
 
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
 
-    //Query ggf. anpassen => erst mal ohne Timestamps
     String query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) " +
             "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
             "      l.val_from.before(Timestamp(2012-06-02)) AND " +
@@ -129,7 +128,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
     String head = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         "Parallelism",
         "dataset",
         "query-type",
