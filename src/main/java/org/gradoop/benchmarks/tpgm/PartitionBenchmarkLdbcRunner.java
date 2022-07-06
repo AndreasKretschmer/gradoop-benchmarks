@@ -11,7 +11,7 @@ public class PartitionBenchmarkLdbcRunner {
     private static final String[] edge_partition_fields = new String[] {"id"};
     private static final String[] queries_pattern_matching_ldbc = new String[] {"MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)",
             "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))",
-            "MATCH (p:person)-[s:studyAt]-(u:university)"};
+            "MATCH (p:person)-[s:studyAt]->(u:university)"};
 
 
     public static void main(String[] args) throws Exception {

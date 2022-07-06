@@ -19,10 +19,13 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.gradoop.temporal.model.impl.TemporalGraph;
 import org.gradoop.temporal.model.impl.TemporalGraphCollection;
+import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
+import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -82,26 +85,70 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       PART_FIELD = "id";
     }
     switch (PARTITION_STRAT) {
-      case "hash":
-        graph.getVertices().partitionByHash(PART_FIELD);
+      case "hash": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getVertices().partitionByHash(PART_FIELD);
+            break;
+          default:
+            graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "edgeHash":
-        graph.getEdges().partitionByHash(PART_FIELD); //Edge-Cut
+      }
+      case "edgeHash": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getEdges().partitionByHash(PART_FIELD);
+            break;
+          default:
+            graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "range":
-        graph.getVertices().partitionByRange(PART_FIELD);
+      }
+      case "range": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getVertices().partitionByRange(PART_FIELD);
+            break;
+          default:
+            graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "edgeRange":
-        graph.getEdges().partitionByRange(PART_FIELD);
+      }
+      case "edgeRange": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getEdges().partitionByRange(PART_FIELD);
+            break;
+          default:
+            graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "DBH":
-//        graph.getEdges().partitionCustom(new DBH(), PART_FIELD);
-        break;
-      case "LDG":
-//        graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
-        break;
-      default:
-        break;
+      }
     }
 
     TemporalGraphCollection results = graph.temporalQuery(query);

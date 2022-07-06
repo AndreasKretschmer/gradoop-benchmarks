@@ -19,6 +19,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.flink.api.common.functions.*;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.operators.ProjectOperator.Projection;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.gradoop.common.model.impl.id.GradoopId;
@@ -211,18 +212,70 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     }
 
     switch (PARTITION_STRAT) {
-      case "hash":
-        graph.getVertices().partitionByHash(PART_FIELD);
+      case "hash": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getVertices().partitionByHash(PART_FIELD);
+            break;
+          default:
+            graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "edgeHash":
-        graph.getEdges().partitionByHash(PART_FIELD); //Edge-Cut
+      }
+      case "edgeHash": {
+        switch (PART_FIELD) {
+          case "id":
+            graph.getEdges().partitionByHash(PART_FIELD);
+            break;
+          default:
+            graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
+          break;
+        }
+      case "range":{
+        switch (PART_FIELD) {
+          case "id":
+            graph.getVertices().partitionByRange(PART_FIELD);
+            break;
+          default:
+            graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "range":
-        graph.getVertices().partitionByRange(PART_FIELD);
+      }
+      case "edgeRange":{
+        switch (PART_FIELD) {
+          case "id":
+            graph.getEdges().partitionByRange(PART_FIELD);
+            break;
+          default:
+            graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                return value.getPropertyValue(PART_FIELD).toString();
+              }
+            });
+            break;
+        }
         break;
-      case "edgeRange":
-        graph.getEdges().partitionByRange(PART_FIELD);
-        break;
+      }
       case "DBH":
 //        DataSet<TemporalEdge> broadcast_Edges = graph.getEdges();
 //        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
@@ -351,7 +404,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
     String head = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         "Parallelism",
         "dataset",
         "query-type",
