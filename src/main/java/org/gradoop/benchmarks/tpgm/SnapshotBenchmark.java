@@ -29,6 +29,7 @@ import org.gradoop.flink.model.api.operators.BinaryBaseGraphToValueOperator;
 import org.gradoop.flink.model.impl.functions.epgm.Id;
 import org.gradoop.flink.model.impl.functions.tuple.Tuple2ToWithCount;
 import org.gradoop.flink.model.impl.operators.count.functions.Tuple2FromTupleWithObjectAnd1L;
+import org.gradoop.flink.model.impl.operators.neighborhood.VertexNeighborhood;
 import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
 import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.io.api.TemporalDataSource;
@@ -48,6 +49,7 @@ import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 import org.gradoop.temporal.util.TemporalGradoopConfig;
 
 import java.io.IOException;
+import java.time.temporal.Temporal;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -180,14 +182,6 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     DataSet<TemporalVertex> vertexes = graph.getVertices();
     DataSet<TemporalEdge> edges = graph.getEdges();
 
-//    vertexes = vertexes.join(vertexDegreeDataSet).where(v -> v.getId()).equalTo(0).with(new JoinFunction<TemporalVertex, WithCount<GradoopId>, TemporalVertex>() {
-//      @Override
-//      public TemporalVertex join(TemporalVertex first, WithCount<GradoopId> second) throws Exception {
-//        first.setProperty("Degree", second.f1);
-//        return first;
-//      }
-//    });
-
     edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
       @Override
       public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
@@ -199,6 +193,16 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
       @Override
       public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
         first.setProperty("TargetDegree", second.f1);
+        return first;
+      }
+    });
+
+    vertexes = vertexes.join(edges).where(v -> v.getId()).equalTo(e -> e.getSourceId()).with(new JoinFunction<TemporalVertex, TemporalEdge, TemporalVertex>() {
+      @Override
+      public TemporalVertex join(TemporalVertex first, TemporalEdge second) throws Exception {
+        List<PropertyValue> tempNeighbour = first.getPropertyValue("Neighbour").getList();
+        tempNeighbour.add(PropertyValue.create(second.getTargetId()));
+        first.setProperty("Neighbour", tempNeighbour);
         return first;
       }
     });
@@ -277,24 +281,40 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "DBH":
-//        DataSet<TemporalEdge> broadcast_Edges = graph.getEdges();
-//        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
-//          @Override
-//          public int partition(GradoopId key, int numPartitions) throws Exception {
-//            PropertyValue SourceDegree = key.getPropertyValue("SourceDegree");
-//            PropertyValue TargetDegree = key.getPropertyValue("TargetDegree");
-//
-//            if (SourceDegree.getLong() > TargetDegree.getLong()) {
-//              return key.getSourceId().hashCode() % numPartitions;
-//            }
-//            else{
-//              return key.getTargetId().hashCode() % numPartitions;
-//            }
-//          }
-//        }, "id");
+        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return key.hashCode() % numPartitions;
+          }
+        }, new KeySelector<TemporalEdge, GradoopId>() {
+          @Override
+          public GradoopId getKey(TemporalEdge value) throws Exception {
+            PropertyValue SourceDegree = value.getPropertyValue("SourceDegree");
+            PropertyValue TargetDegree = value.getPropertyValue("TargetDegree");
+
+            if (SourceDegree.getLong() > TargetDegree.getLong()) {
+              return value.getSourceId();
+            }
+            else{
+              return value.getTargetId();
+            }
+          }
+        });
         break;
       case "LDG":
-        //graph.getEdges().partitionCustom(new LDG(), PART_FIELD);
+        graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return 0;
+          }
+        }, new KeySelector<TemporalVertex, GradoopId>() {
+          @Override
+          public GradoopId getKey(TemporalVertex value) throws Exception {
+            List<PropertyValue> Neighbours = value.getPropertyValue("Neighbour").getList();
+
+            return null;
+          }
+        });
         break;
       default:
         break;

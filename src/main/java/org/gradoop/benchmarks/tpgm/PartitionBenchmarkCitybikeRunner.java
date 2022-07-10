@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class PartitionBenchmarkCitybikeRunner {
-    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG"};
+    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG", "default"};
     private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
 
-    private static final String[] vertex_partition_fields = new String[] {"id", "properties.name", "properties.regionId"};
-    private static final String[] edge_partition_fields = new String[] {"id", "properties.gender", "properties.bike_id"};
+    private static final String[] vertex_partition_fields = new String[] {"id", "name", "regionId"};
+    private static final String[] edge_partition_fields = new String[] {"id", "gender", "bike_id"};
     private static final String[] queries_pattern_matching_citybike = new String[] {
             "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id",
             "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id",
@@ -29,7 +29,7 @@ public class PartitionBenchmarkCitybikeRunner {
         ArrayList<String> stringList = new ArrayList<>(Arrays.asList(args));
         stringList.add("-f");
         stringList.add("csv");
-        //stringList.add("-y");
+        stringList.add("-y");
         stringList.add("all");
         args = new String [stringList.size()];
         args = stringList.toArray(args);

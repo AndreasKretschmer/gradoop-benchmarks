@@ -4,10 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class PartitionBenchmarkLdbcRunner {
-    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG"};
+    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG", "default"};
     private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
 
-    private static final String[] vertex_partition_fields = new String[] {"id", "properties.name"};
+    private static final String[] vertex_partition_fields = new String[] {"id", "name"};
     private static final String[] edge_partition_fields = new String[] {"id"};
     private static final String[] queries_pattern_matching_ldbc = new String[] {"MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)",
             "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))",

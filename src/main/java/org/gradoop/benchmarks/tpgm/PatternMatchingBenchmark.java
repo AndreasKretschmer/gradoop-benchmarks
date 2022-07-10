@@ -16,16 +16,23 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
+import org.gradoop.common.model.impl.id.GradoopId;
+import org.gradoop.common.model.impl.properties.PropertyValue;
+import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
+import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.model.impl.TemporalGraph;
 import org.gradoop.temporal.model.impl.TemporalGraphCollection;
 import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
 import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
+import org.gradoop.temporal.util.TemporalGradoopConfig;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -67,8 +74,8 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     readBaseCMDArguments(cmd);
 
     TemporalGraph graph = readTemporalGraph(INPUT_PATH, INPUT_FORMAT);
-
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
+    TemporalGradoopConfig conf = TemporalGradoopConfig.createConfig(env);
 
     String query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) " +
             "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
@@ -84,6 +91,27 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     if (PART_FIELD == null) {
       PART_FIELD = "id";
     }
+
+    DataSet<WithCount<GradoopId>> vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
+    DataSet<TemporalVertex> vertexes = graph.getVertices();
+    DataSet<TemporalEdge> edges = graph.getEdges();
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("SourceDegree", second.f1);
+        return first;
+      }
+    });
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("TargetDegree", second.f1);
+        return first;
+      }
+    });
+
+
+    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
     switch (PARTITION_STRAT) {
       case "hash": {
         switch (PART_FIELD) {
@@ -147,6 +175,28 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
             });
             break;
         }
+        break;
+      }
+      case "DBH": {
+        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return key.hashCode() % numPartitions;
+          }
+        }, new KeySelector<TemporalEdge, GradoopId>() {
+          @Override
+          public GradoopId getKey(TemporalEdge value) throws Exception {
+            PropertyValue SourceDegree = value.getPropertyValue("SourceDegree");
+            PropertyValue TargetDegree = value.getPropertyValue("TargetDegree");
+
+            if (SourceDegree.getLong() > TargetDegree.getLong()) {
+              return value.getSourceId();
+            }
+            else{
+              return value.getTargetId();
+            }
+          }
+        });
         break;
       }
     }
