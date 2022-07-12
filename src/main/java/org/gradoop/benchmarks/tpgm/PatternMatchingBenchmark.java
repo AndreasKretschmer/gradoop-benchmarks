@@ -26,6 +26,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.gradoop.common.model.impl.id.GradoopId;
 import org.gradoop.common.model.impl.properties.PropertyValue;
+import org.gradoop.flink.model.impl.functions.epgm.Id;
 import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
 import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.model.impl.TemporalGraph;
@@ -111,15 +112,32 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     });
 
 
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("SourceDegree", second.f1);
+        return first;
+      }
+    });
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("TargetDegree", second.f1);
+        return first;
+      }
+    });
+
     graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
+    //graph vorverarbeiten 1Mal -> mehrfach (Präsentation)
+
     switch (PARTITION_STRAT) {
       case "hash": {
         switch (PART_FIELD) {
           case "id":
-            graph.getVertices().partitionByHash(PART_FIELD);
+            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
             break;
           default:
-            graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
                 return value.getPropertyValue(PART_FIELD).toString();
@@ -132,10 +150,10 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       case "edgeHash": {
         switch (PART_FIELD) {
           case "id":
-            graph.getEdges().partitionByHash(PART_FIELD);
+            edges = graph.getEdges().partitionByHash(PART_FIELD);
             break;
           default:
-            graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
                 return value.getPropertyValue(PART_FIELD).toString();
@@ -145,13 +163,13 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
-      case "range": {
+      case "range":{
         switch (PART_FIELD) {
           case "id":
-            graph.getVertices().partitionByRange(PART_FIELD);
+            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
             break;
           default:
-            graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
                 return value.getPropertyValue(PART_FIELD).toString();
@@ -161,13 +179,13 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
-      case "edgeRange": {
+      case "edgeRange":{
         switch (PART_FIELD) {
           case "id":
-            graph.getEdges().partitionByRange(PART_FIELD);
+            edges = graph.getEdges().partitionByRange(PART_FIELD);
             break;
           default:
-            graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
                 return value.getPropertyValue(PART_FIELD).toString();
@@ -177,8 +195,14 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
-      case "DBH": {
-        graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
+      case "DBH":
+        vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return key.hashCode() % numPartitions;
+          }
+        }, new Id<>());
+        edges = graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
             return key.hashCode() % numPartitions;
@@ -198,9 +222,10 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
           }
         });
         break;
-      }
+      default:
+        break;
     }
-
+    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
     TemporalGraphCollection results = graph.temporalQuery(query);
 
     // only count the results and write it to a csv file
