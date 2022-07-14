@@ -102,6 +102,8 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    */
   private static final String OPTION_PARTITION_STRAT = "p";
 
+  private static final String OPTION_PARTITION_FIELD = "pf";
+
   /**
    * Used verification flag
    */
@@ -128,6 +130,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     OPTIONS.addOption(OPTION_QUERY_FROM, "from", true, "Used query from timestamp [ms]");
     OPTIONS.addOption(OPTION_QUERY_TO, "to", true, "Used query to timestamp [ms]");
     OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
+    OPTIONS.addOption(OPTION_PARTITION_FIELD, "partField", true, "Used partition field");
   }
 
   public static void SetPartStrat(String partStrat){
@@ -195,17 +198,20 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
       PART_FIELD = "id";
     }
 
-    switch (PARTITION_STRAT) {
+    final String finalPartField = PART_FIELD;
+    final String finalPartStrat = PARTITION_STRAT;
+
+    switch (finalPartStrat) {
       case "hash": {
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
+            vertexes = graph.getVertices().partitionByHash(finalPartField);
             break;
           default:
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -213,15 +219,15 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeHash": {
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            edges = graph.getEdges().partitionByHash(PART_FIELD);
+            edges = graph.getEdges().partitionByHash(finalPartField);
             break;
           default:
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -229,15 +235,15 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
           break;
         }
       case "range":{
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
+            vertexes = graph.getVertices().partitionByRange(finalPartField);
             break;
           default:
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -245,15 +251,15 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeRange":{
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            edges = graph.getEdges().partitionByRange(PART_FIELD);
+            edges = graph.getEdges().partitionByRange(finalPartField);
             break;
           default:
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -385,7 +391,8 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     QUERY_TYPE   = cmd.getOptionValue(OPTION_QUERY_TYPE);
     VERIFICATION = cmd.hasOption(OPTION_VERIFICATION);
 
-    // PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
+    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
+    PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
 
   /**

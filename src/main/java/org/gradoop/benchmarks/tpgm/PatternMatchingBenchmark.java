@@ -54,6 +54,9 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @param args program arguments
    * @throws Exception in case of an error
    */
+
+  private static final String OPTION_PARTITION_STRAT = "p";
+  private static final String OPTION_PARTITION_FIELD = "pf";
   private static String PARTITION_STRAT;
   private static String PART_FIELD;
   private static String QUERY_STRING;
@@ -73,6 +76,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     }
 
     readBaseCMDArguments(cmd);
+    readCMDArguments(cmd);
 
     TemporalGraph graph = readTemporalGraph(INPUT_PATH, INPUT_FORMAT);
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
@@ -111,20 +115,23 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
     });
 
-    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
+    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(), vertexes , edges);
     //graph vorverarbeiten 1Mal -> mehrfach (Präsentation)
 
-    switch (PARTITION_STRAT) {
+    final String finalPartField = PART_FIELD;
+    final String finalPartStrat = PARTITION_STRAT;
+
+    switch (finalPartStrat) {
       case "hash": {
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
+            vertexes = graph.getVertices().partitionByHash(finalPartField);
             break;
           default:
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -132,15 +139,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeHash": {
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            edges = graph.getEdges().partitionByHash(PART_FIELD);
+            edges = graph.getEdges().partitionByHash(finalPartField);
             break;
           default:
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -148,15 +155,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "range":{
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
+            vertexes = graph.getVertices().partitionByRange(finalPartField);
             break;
           default:
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -164,15 +171,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeRange":{
-        switch (PART_FIELD) {
+        switch (finalPartField) {
           case "id":
-            edges = graph.getEdges().partitionByRange(PART_FIELD);
+            edges = graph.getEdges().partitionByRange(finalPartField);
             break;
           default:
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                return value.getPropertyValue(finalPartField).toString();
               }
             });
             break;
@@ -259,5 +266,10 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         PARTITION_STRAT,
         PART_FIELD);
     writeToCSVFile(head, tail);
+  }
+
+  private static void readCMDArguments(CommandLine cmd) {
+    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
+    PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
 }

@@ -25,15 +25,17 @@ public class PartitionBenchmarkLdbcRunner {
         stringList.add("csv");
         stringList.add("-y");
         stringList.add("all");
-        args = new String [stringList.size()];
-        args = stringList.toArray(args);
 
         for (String strat : vertex_partition_starts) {
             for (String partition_field : vertex_partition_fields) {
                 for (String query : queries_pattern_matching_ldbc) {
                     PatternMatchingBenchmark.SetQueryString(query);
-                    PatternMatchingBenchmark.SetPartStrat(strat);
-                    PatternMatchingBenchmark.SetPartField(partition_field);
+                    stringList.add("-p");
+                    stringList.add(strat);
+                    stringList.add("-pf");
+                    stringList.add(partition_field);
+                    args = new String [stringList.size()];
+                    args = stringList.toArray(args);
                     PatternMatchingBenchmark.main(args);
                 }
             }
@@ -42,8 +44,12 @@ public class PartitionBenchmarkLdbcRunner {
             for (String partition_field : edge_partition_fields) {
                 for (String query : queries_pattern_matching_ldbc) {
                     PatternMatchingBenchmark.SetQueryString(query);
-                    PatternMatchingBenchmark.SetPartStrat(strat);
-                    PatternMatchingBenchmark.SetPartField(partition_field);
+                    stringList.add("-p");
+                    stringList.add(strat);
+                    stringList.add("-pf");
+                    stringList.add(partition_field);
+                    args = new String [stringList.size()];
+                    args = stringList.toArray(args);
                     PatternMatchingBenchmark.main(args);
                 }
             }
@@ -54,21 +60,27 @@ public class PartitionBenchmarkLdbcRunner {
         ArrayList<String> stringList = new ArrayList<>(Arrays.asList(args));
         stringList.add("-y");
         stringList.add("all");
-        args = new String [stringList.size()];
-        args = stringList.toArray(args);
 
         for (String strat : vertex_partition_starts) {
             for (String partition_field : vertex_partition_fields) {
-                SnapshotBenchmark.SetPartStrat(strat);
-                SnapshotBenchmark.SetPartField(partition_field);
+                stringList.add("-p");
+                stringList.add(strat);
+                stringList.add("-pf");
+                stringList.add(partition_field);
+                args = new String [stringList.size()];
+                args = stringList.toArray(args);
                 SnapshotBenchmark.main(args);
             }
         }
 
         for (String strat : edge_partition_starts) {
             for (String partition_field : edge_partition_fields) {
-                SnapshotBenchmark.SetPartStrat(strat);
-                SnapshotBenchmark.SetPartField(partition_field);
+                stringList.add("-p");
+                stringList.add(strat);
+                stringList.add("-pf");
+                stringList.add(partition_field);
+                args = new String [stringList.size()];
+                args = stringList.toArray(args);
                 SnapshotBenchmark.main(args);
             }
         }
