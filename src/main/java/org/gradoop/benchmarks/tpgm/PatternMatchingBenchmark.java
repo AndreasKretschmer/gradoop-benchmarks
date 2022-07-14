@@ -111,22 +111,6 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
     });
 
-
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("SourceDegree", second.f1);
-        return first;
-      }
-    });
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("TargetDegree", second.f1);
-        return first;
-      }
-    });
-
     graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
     //graph vorverarbeiten 1Mal -> mehrfach (Präsentation)
 

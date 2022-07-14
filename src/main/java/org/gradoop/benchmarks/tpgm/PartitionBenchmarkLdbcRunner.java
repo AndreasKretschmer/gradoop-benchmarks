@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class PartitionBenchmarkLdbcRunner {
-    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "LDG", "default"};
+    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "default"};
     private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
 
     private static final String[] vertex_partition_fields = new String[] {"id", "name"};
