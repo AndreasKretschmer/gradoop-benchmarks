@@ -167,24 +167,4 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     Files.write(path, linesToWrite, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
       StandardOpenOption.APPEND);
   }
-
-  public static class DBH implements Partitioner<TemporalEdge>{
-		public int partition(TemporalEdge key, int numPartitions) {
-          PropertyValue SourceDegree = key.getPropertyValue("SourceDegree");
-          PropertyValue TargetDegree = key.getPropertyValue("TargetDegree");
-      
-          if (SourceDegree.getLong() > TargetDegree.getLong()) {
-            return key.getSourceId().hashCode() % numPartitions;
-          }
-          else{
-            return key.getTargetId().hashCode() % numPartitions;
-          }
-		}
-	}
-
-  public static class LDG implements Partitioner<TemporalVertex> {
-		public int partition(TemporalVertex key, int numPartitions) {
-          return key.getId().hashCode() % numPartitions;
-		}
-	}
 }
