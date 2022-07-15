@@ -55,18 +55,8 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @throws Exception in case of an error
    */
 
-  private static final String OPTION_PARTITION_STRAT = "p";
-  private static final String OPTION_PARTITION_FIELD = "pf";
-  private static String PARTITION_STRAT;
-  private static String PART_FIELD;
   private static String QUERY_STRING;
-  public static void SetPartStrat(String partStrat){
-    PARTITION_STRAT = partStrat;
-  }
 
-  public static void SetPartField(String partField){
-    PART_FIELD = partField;
-  }
   public static void SetQueryString(String queryString) {QUERY_STRING = queryString;}
   public static void main(String[] args) throws Exception {
     CommandLine cmd = parseArguments(args, PatternMatchingBenchmark.class.getName());
@@ -76,7 +66,6 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     }
 
     readBaseCMDArguments(cmd);
-    readCMDArguments(cmd);
 
     TemporalGraph graph = readTemporalGraph(INPUT_PATH, INPUT_FORMAT);
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
@@ -266,10 +255,5 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         PARTITION_STRAT,
         PART_FIELD);
     writeToCSVFile(head, tail);
-  }
-
-  private static void readCMDArguments(CommandLine cmd) {
-    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
-    PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
 }

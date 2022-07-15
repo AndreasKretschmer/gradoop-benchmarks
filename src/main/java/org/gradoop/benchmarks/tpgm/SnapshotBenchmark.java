@@ -129,8 +129,6 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     OPTIONS.addOption(OPTION_VERIFICATION, "verification", false, "Verify Snapshot with join.");
     OPTIONS.addOption(OPTION_QUERY_FROM, "from", true, "Used query from timestamp [ms]");
     OPTIONS.addOption(OPTION_QUERY_TO, "to", true, "Used query to timestamp [ms]");
-    OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
-    OPTIONS.addOption(OPTION_PARTITION_FIELD, "partField", true, "Used partition field");
   }
 
   public static void SetPartStrat(String partStrat){
@@ -390,9 +388,6 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
 
     QUERY_TYPE   = cmd.getOptionValue(OPTION_QUERY_TYPE);
     VERIFICATION = cmd.hasOption(OPTION_VERIFICATION);
-
-    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
-    PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
 
   /**

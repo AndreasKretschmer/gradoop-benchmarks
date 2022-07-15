@@ -69,6 +69,10 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   private static final String OPTION_COUNT_RESULT = "n";
 
+  private static final String OPTION_PARTITION_STRAT = "p";
+
+  private static final String OPTION_PARTITION_FIELD = "pf";
+
   /**
    * Used input path
    */
@@ -90,6 +94,9 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   static boolean COUNT_RESULT;
 
+  static String PARTITION_STRAT;
+  static String PART_FIELD;
+
   // static TemporalGraph graph;
 
   static {
@@ -99,6 +106,8 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     OPTIONS.addRequiredOption(OPTION_CSV_PATH, "csv", true,
       "Path to csv result file (will be created if not available).");
     OPTIONS.addOption(OPTION_COUNT_RESULT, "count", false, "Only count the results instead of writing them.");
+    OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
+    OPTIONS.addOption(OPTION_PARTITION_FIELD, "partField", true, "Used partition field");
   }
 
   /**
@@ -145,6 +154,8 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     OUTPUT_PATH  = cmd.getOptionValue(OPTION_OUTPUT_PATH);
     CSV_PATH     = cmd.getOptionValue(OPTION_CSV_PATH);
     COUNT_RESULT = cmd.hasOption(OPTION_COUNT_RESULT);
+    PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
+    PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
 
   /**
