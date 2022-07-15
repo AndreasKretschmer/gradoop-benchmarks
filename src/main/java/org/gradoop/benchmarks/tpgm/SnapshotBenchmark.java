@@ -121,22 +121,11 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    */
   private static String QUERY_TYPE;
 
-  private static String PARTITION_STRAT;
-  private static String PART_FIELD;
-
   static {
     OPTIONS.addRequiredOption(OPTION_QUERY_TYPE, "type", true, "Used query type");
     OPTIONS.addOption(OPTION_VERIFICATION, "verification", false, "Verify Snapshot with join.");
     OPTIONS.addOption(OPTION_QUERY_FROM, "from", true, "Used query from timestamp [ms]");
     OPTIONS.addOption(OPTION_QUERY_TO, "to", true, "Used query to timestamp [ms]");
-  }
-
-  public static void SetPartStrat(String partStrat){
-    PARTITION_STRAT = partStrat;
-  }
-
-  public static void SetPartField(String partField){
-    PART_FIELD = partField;
   }
 
   /**
