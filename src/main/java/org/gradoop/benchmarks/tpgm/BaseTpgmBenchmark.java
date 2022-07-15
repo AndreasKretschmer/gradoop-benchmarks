@@ -69,7 +69,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   private static final String OPTION_COUNT_RESULT = "n";
 
-  private static final String OPTION_PARTITION_STRAT = "p";
+  private static final String OPTION_PARTITION_STRAT = "ps";
 
   private static final String OPTION_PARTITION_FIELD = "pf";
 

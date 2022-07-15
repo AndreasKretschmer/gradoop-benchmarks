@@ -30,7 +30,7 @@ public class PartitionBenchmarkLdbcRunner {
             for (String partition_field : vertex_partition_fields) {
                 for (String query : queries_pattern_matching_ldbc) {
                     PatternMatchingBenchmark.SetQueryString(query);
-                    stringList.add("-p");
+                    stringList.add("-ps");
                     stringList.add(strat);
                     stringList.add("-pf");
                     stringList.add(partition_field);
@@ -44,7 +44,7 @@ public class PartitionBenchmarkLdbcRunner {
             for (String partition_field : edge_partition_fields) {
                 for (String query : queries_pattern_matching_ldbc) {
                     PatternMatchingBenchmark.SetQueryString(query);
-                    stringList.add("-p");
+                    stringList.add("-ps");
                     stringList.add(strat);
                     stringList.add("-pf");
                     stringList.add(partition_field);
@@ -63,7 +63,7 @@ public class PartitionBenchmarkLdbcRunner {
 
         for (String strat : vertex_partition_starts) {
             for (String partition_field : vertex_partition_fields) {
-                stringList.add("-p");
+                stringList.add("-ps");
                 stringList.add(strat);
                 stringList.add("-pf");
                 stringList.add(partition_field);
@@ -75,7 +75,7 @@ public class PartitionBenchmarkLdbcRunner {
 
         for (String strat : edge_partition_starts) {
             for (String partition_field : edge_partition_fields) {
-                stringList.add("-p");
+                stringList.add("-ps");
                 stringList.add(strat);
                 stringList.add("-pf");
                 stringList.add(partition_field);
