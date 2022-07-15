@@ -150,7 +150,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   static void readBaseCMDArguments(CommandLine cmd) {
     INPUT_PATH   = cmd.getOptionValue(OPTION_INPUT_PATH);
-    INPUT_FORMAT = cmd.getOptionValue(OPTION_INPUT_FORMAT);
+    INPUT_FORMAT = cmd.getOptionValue(OPTION_INPUT_FORMAT, DEFAULT_FORMAT);
     OUTPUT_PATH  = cmd.getOptionValue(OPTION_OUTPUT_PATH);
     CSV_PATH     = cmd.getOptionValue(OPTION_CSV_PATH);
     COUNT_RESULT = cmd.hasOption(OPTION_COUNT_RESULT);
