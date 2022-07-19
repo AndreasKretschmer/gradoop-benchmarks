@@ -6,11 +6,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class PartitionBenchmarkCitybikeRunner {
-    private static final String[] vertex_partition_starts = new String [] {"hash", "range", "default"};
-    private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
+    //private static final String[] vertex_partition_starts = new String [] {"hash", "range", "default"};
+    private static final String[] vertex_partition_starts = new String [] {"hash"};
+    private static final String[] edge_partition_starts = new String [] {"edgeHash"};
+    //private static final String[] edge_partition_starts = new String [] {"edgeHash", "edgeRange", "DBH"};
 
-    private static final String[] vertex_partition_fields = new String[] {"id", "name", "regionId"};
-    private static final String[] edge_partition_fields = new String[] {"id", "gender", "bike_id"};
+    //private static final String[] vertex_partition_fields = new String[] {"id", "name", "regionId"};
+    private static final String[] vertex_partition_fields = new String[] {"id",};
+    //private static final String[] edge_partition_fields = new String[] {"id", "gender", "bike_id"};
     private static final String[] queries_pattern_matching_citybike = new String[] {
             "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id",
             "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id",
@@ -48,20 +51,20 @@ public class PartitionBenchmarkCitybikeRunner {
                 }
             }
         }
-        for (String strat : edge_partition_starts) {
-            for (String partition_field : edge_partition_fields) {
-                for (String query : queries_pattern_matching_citybike) {
-                    PatternMatchingBenchmark.SetQueryString(query);
-                    stringList.add("-ps");
-                    stringList.add(strat);
-                    stringList.add("-pf");
-                    stringList.add(partition_field);
-                    args = new String [stringList.size()];
-                    args = stringList.toArray(args);
-                    PatternMatchingBenchmark.main(args);
-                }
-            }
-        }
+//        for (String strat : edge_partition_starts) {
+//            for (String partition_field : edge_partition_fields) {
+//                for (String query : queries_pattern_matching_citybike) {
+//                    PatternMatchingBenchmark.SetQueryString(query);
+//                    stringList.add("-ps");
+//                    stringList.add(strat);
+//                    stringList.add("-pf");
+//                    stringList.add(partition_field);
+//                    args = new String [stringList.size()];
+//                    args = stringList.toArray(args);
+//                    PatternMatchingBenchmark.main(args);
+//                }
+//            }
+//        }
     }
 
     private static void runSnapshotBenchmark(String[] args) throws Exception{
@@ -81,16 +84,16 @@ public class PartitionBenchmarkCitybikeRunner {
             }
         }
 
-        for (String strat : edge_partition_starts) {
-            for (String partition_field : edge_partition_fields) {
-                stringList.add("-ps");
-                stringList.add(strat);
-                stringList.add("-pf");
-                stringList.add(partition_field);
-                args = new String [stringList.size()];
-                args = stringList.toArray(args);
-                SnapshotBenchmark.main(args);
-            }
-        }
+//        for (String strat : edge_partition_starts) {
+//            for (String partition_field : edge_partition_fields) {
+//                stringList.add("-ps");
+//                stringList.add(strat);
+//                stringList.add("-pf");
+//                stringList.add(partition_field);
+//                args = new String [stringList.size()];
+//                args = stringList.toArray(args);
+//                SnapshotBenchmark.main(args);
+//            }
+//        }
     }
 }

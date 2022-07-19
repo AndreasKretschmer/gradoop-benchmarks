@@ -56,7 +56,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    */
 
   private static String QUERY_STRING;
+  private static final String QUERY_STRING_PARA = "qs";
 
+  static {
+    OPTIONS.addOption(QUERY_STRING_PARA, "query", true, "Query String for Pattern Matching");
+  }
   public static void SetQueryString(String queryString) {QUERY_STRING = queryString;}
   public static void main(String[] args) throws Exception {
     CommandLine cmd = parseArguments(args, PatternMatchingBenchmark.class.getName());
@@ -66,7 +70,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     }
 
     readBaseCMDArguments(cmd);
-
+    readCMDArguments(cmd);
     TemporalGraph graph = readTemporalGraph(INPUT_PATH, INPUT_FORMAT);
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
     TemporalGradoopConfig conf = TemporalGradoopConfig.createConfig(env);
@@ -230,7 +234,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
     String head = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         "Parallelism",
         "dataset",
         "query-type",
@@ -240,7 +244,8 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         "count-only",
         "Runtime(s)",
         "Part.-Strat.",
-        "Partitioned Field");
+        "Partitioned Field",
+        "Query");
 
     String tail = String
       .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
@@ -253,7 +258,12 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         COUNT_RESULT,
         env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
         PARTITION_STRAT,
-        PART_FIELD);
+        PART_FIELD,
+        QUERY_STRING);
     writeToCSVFile(head, tail);
+  }
+
+  private static void readCMDArguments(CommandLine cmd) {
+    QUERY_STRING   = cmd.getOptionValue(QUERY_STRING_PARA);
   }
 }
