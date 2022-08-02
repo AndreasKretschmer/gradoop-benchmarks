@@ -185,20 +185,20 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     if (PART_FIELD == null) {
       PART_FIELD = "id";
     }
-    final String finalPartField = PART_FIELD;
-    final String finalPartStrat = PARTITION_STRAT;
+    // final String finalPartField = PART_FIELD;
+    // final String finalPartStrat = PARTITION_STRAT;
 
-    switch (finalPartStrat) {
+    switch (PARTITION_STRAT) {
       case "hash": {
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(finalPartField);
+            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
             break;
           default:
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -206,15 +206,15 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeHash": {
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByHash(finalPartField);
+            edges = graph.getEdges().partitionByHash(PART_FIELD);
             break;
           default:
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -222,15 +222,15 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
           break;
         }
       case "range":{
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(finalPartField);
+            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
             break;
           default:
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -238,32 +238,32 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeRange":{
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByRange(finalPartField);
+            edges = graph.getEdges().partitionByRange(PART_FIELD);
             break;
           default:
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
         }
         break;
       }
-      case "DBH":
+      case "DBH": {
         vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return key.hashCode() % numPartitions;
+            return ((key.hashCode() % numPartitions) * -1);
           }
         }, new Id<>());
         edges = graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return key.hashCode() % numPartitions;
+            return ((key.hashCode() % numPartitions) * -1);
           }
         }, new KeySelector<TemporalEdge, GradoopId>() {
           @Override
@@ -280,6 +280,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
           }
         });
         break;
+      }
       default:
         break;
     }

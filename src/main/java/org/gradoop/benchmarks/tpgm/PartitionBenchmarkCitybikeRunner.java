@@ -40,7 +40,7 @@ public class PartitionBenchmarkCitybikeRunner {
         for (String strat : vertex_partition_starts) {
             for (String partition_field : vertex_partition_fields) {
                 for (String query : queries_pattern_matching_citybike) {
-                    PatternMatchingBenchmark.SetQueryString(query);
+                    //PatternMatchingBenchmark.SetQueryString(query);
                     stringList.add("-ps");
                     stringList.add(strat);
                     stringList.add("-pf");

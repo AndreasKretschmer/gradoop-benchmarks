@@ -66,7 +66,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
   private static final String QUERY_STRING_PARA = "z";
 
   static {
-    OPTIONS.addOption(QUERY_STRING_PARA, "query", true, "Query String for Pattern Matching");
+    OPTIONS.addOption(QUERY_STRING_PARA, "query", true, "Query String for Pattern Matching indexed per numbers from 1 to 6");
   }
 
   public static void main(String[] args) throws Exception {
@@ -83,28 +83,29 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     TemporalGradoopConfig conf = TemporalGradoopConfig.createConfig(env);
 
     //define several query strings selectable per run parameter -z. (1,2,3 = prepared for the dataset citibike, 4,5,6 prepared for the dataset ldbc)
-    String query = "";
+    String temp_query = "";
     switch (QUERY_STRING){
       case "1":
-        query = "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id";
+      temp_query = "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id";
         break;
       case "2":
-        query = "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id";
+      temp_query = "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id";
         break;
       case "3":
-        query = "MATCH (v1:Station {cellId: 2883})-[t1:Trip]->(v2:Station)-[t2:Trip]->(v3:Station) WHERE v2.id != v1.id AND v2.id != v3.id AND v3.id != v1.id AND t1.val.precedes(t2.val) AND t1.val.lengthAtLeast(Minutes(30)) AND t2.val.lengthAtLeast(Minutes(30))";
+      temp_query = "MATCH (v1:Station {cellId: 2883})-[t1:Trip]->(v2:Station)-[t2:Trip]->(v3:Station) WHERE v2.id != v1.id AND v2.id != v3.id AND v3.id != v1.id AND t1.val.precedes(t2.val) AND t1.val.lengthAtLeast(Minutes(30)) AND t2.val.lengthAtLeast(Minutes(30))";
         break;
       case "4":
-        query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)";
+      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)";
         break;
       case "5":
-        query = "MATCH (p:person)-[s:studyAt]->(u:university)";
+      temp_query = "MATCH (p:person)-[s:studyAt]->(u:university)";
         break;
       case "6":
-        query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))";
+      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))";
         break;
     }
 
+    String query = temp_query;
 
     DataSet<WithCount<GradoopId>> vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
     DataSet<TemporalVertex> vertexes = graph.getVertices();
@@ -138,21 +139,21 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     if (PART_FIELD == null) {
       PART_FIELD = "id";
     }
-    final String finalPartField = PART_FIELD;
-    final String finalPartStrat = PARTITION_STRAT;
+    // final String finalPartField = PART_FIELD;
+    // final String finalPartStrat = PARTITION_STRAT;
 
-    switch (finalPartStrat) {
+    switch (PARTITION_STRAT) {
       //partitions the vertices for the given partition field per hash
       case "hash": {
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(finalPartField);
+            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
             break;
           default:
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -161,15 +162,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the edges for the given partition field per hash
       case "edgeHash": {
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByHash(finalPartField);
+            edges = graph.getEdges().partitionByHash(PART_FIELD);
             break;
           default:
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -178,15 +179,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the vertices for the given partition field per range
       case "range":{
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(finalPartField);
+            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
             break;
           default:
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -195,15 +196,15 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the edges for the given partition field per range
       case "edgeRange":{
-        switch (finalPartField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByRange(finalPartField);
+            edges = graph.getEdges().partitionByRange(PART_FIELD);
             break;
           default:
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(finalPartField).toString();
+                return value.getPropertyValue(PART_FIELD).toString();
               }
             });
             break;
@@ -211,24 +212,24 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         break;
       }
       //partitions the edges and vertices per Degree-Based Hashing (DBH)
-      case "DBH":
+      case "DBH": {
         vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return key.hashCode() % numPartitions;
+            return ((key.hashCode() % numPartitions)* -1);
           }
         }, new Id<>());
         edges = graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return key.hashCode() % numPartitions;
+            return ((key.hashCode() % numPartitions) * -1);
           }
         }, new KeySelector<TemporalEdge, GradoopId>() {
           @Override
           public GradoopId getKey(TemporalEdge value) throws Exception {
             PropertyValue SourceDegree = value.getPropertyValue("SourceDegree");
             PropertyValue TargetDegree = value.getPropertyValue("TargetDegree");
-
+            
             if (SourceDegree.getLong() > TargetDegree.getLong()) {
               return value.getSourceId();
             }
@@ -238,6 +239,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
           }
         });
         break;
+      }
       default:
         break;
     }
