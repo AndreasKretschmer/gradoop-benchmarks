@@ -26,6 +26,7 @@ import org.gradoop.flink.model.impl.functions.epgm.Id;
 import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
 import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.io.api.TemporalDataSource;
+import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSource;
 import org.gradoop.temporal.model.api.functions.TemporalPredicate;
 import org.gradoop.temporal.model.impl.TemporalGraph;
@@ -97,12 +98,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    * Option to declare query type
    */
   private static final String OPTION_QUERY_TYPE = "y";
-  /**
-   * Option to declare the partition strategy
-   */
-  private static final String OPTION_PARTITION_STRAT = "p";
 
-  private static final String OPTION_PARTITION_FIELD = "pf";
 
   /**
    * Used verification flag
@@ -162,29 +158,33 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
     DataSet<TemporalVertex> vertexes = graph.getVertices();
     DataSet<TemporalEdge> edges = graph.getEdges();
 
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("SourceDegree", second.f1);
-        return first;
-      }
-    });
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("TargetDegree", second.f1);
-        return first;
-      }
-    });
+    // calculate source and target degree of the vertices per edge
+    if (CALC_DEGREE) {
+      edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+        @Override
+        public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+          first.setProperty("SourceDegree", second.f1);
+          return first;
+        }
+      });
+      edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+        @Override
+        public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+          first.setProperty("TargetDegree", second.f1);
+          return first;
+        }
+      });
 
-    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
-    //graph vorverarbeiten 1Mal -> mehrfach (Präsentation)
+      // create new graph with the degrees as properties
+      graph = conf.getTemporalGraphFactory().fromDataSets(graph.getGraphHead(), vertexes, edges);
+      //save the new graph as a file in the output directory 
+      graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
+    }
 
-    //partition graph
+    //partition the graph for the selected partition strategy and the partition field
     if (PART_FIELD == null) {
       PART_FIELD = "id";
     }
-
     final String finalPartField = PART_FIELD;
     final String finalPartStrat = PARTITION_STRAT;
 
@@ -283,6 +283,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
       default:
         break;
     }
+    //save the partitioned graph 
     graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
 
     // get temporal predicate
@@ -387,7 +388,7 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
     String head = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         "Parallelism",
         "dataset",
         "query-type",
@@ -397,10 +398,11 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         "count-only",
         "Runtime(s)",
         "Part.-Strat.",
-        "Partitioned Field");
+        "Partitioned Field",
+        "Type");
 
     String tail = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         env.getParallelism(),
         INPUT_PATH,
         QUERY_TYPE,
@@ -410,7 +412,8 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         COUNT_RESULT,
         env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
         PARTITION_STRAT,
-        PART_FIELD);
+        PART_FIELD,
+        "Snapshot");
 
     writeToCSVFile(head, tail);
   }

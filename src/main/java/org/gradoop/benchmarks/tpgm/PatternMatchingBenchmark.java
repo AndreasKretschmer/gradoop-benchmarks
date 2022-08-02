@@ -29,6 +29,7 @@ import org.gradoop.common.model.impl.properties.PropertyValue;
 import org.gradoop.flink.model.impl.functions.epgm.Id;
 import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
 import org.gradoop.flink.model.impl.tuples.WithCount;
+import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.model.impl.TemporalGraph;
 import org.gradoop.temporal.model.impl.TemporalGraphCollection;
 import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
@@ -55,13 +56,19 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    * @throws Exception in case of an error
    */
 
+  /**
+   * Used query string indexed from 1..6.
+  */
   private static String QUERY_STRING;
-  private static final String QUERY_STRING_PARA = "qs";
+  /**
+   * Option to select a predefined cypher query per Index for the datasets citibike (1,2,3) or ldbc (4,5,6)
+  */
+  private static final String QUERY_STRING_PARA = "z";
 
   static {
     OPTIONS.addOption(QUERY_STRING_PARA, "query", true, "Query String for Pattern Matching");
   }
-  public static void SetQueryString(String queryString) {QUERY_STRING = queryString;}
+
   public static void main(String[] args) throws Exception {
     CommandLine cmd = parseArguments(args, PatternMatchingBenchmark.class.getName());
 
@@ -75,46 +82,67 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     ExecutionEnvironment env = graph.getConfig().getExecutionEnvironment();
     TemporalGradoopConfig conf = TemporalGradoopConfig.createConfig(env);
 
-    String query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) " +
-            "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
-            "      l.val_from.before(Timestamp(2012-06-02)) AND " +
-            "      c.val_from.after(Timestamp(2012-05-30)) AND " +
-            "      c.val_from.before(Timestamp(2012-06-02)) AND " +
-            "      po.val_from.after(Timestamp(2012-05-30)) AND " +
-            "      po.val_from.before(Timestamp(2012-06-02))";
-    if (QUERY_STRING != null){
-      query = QUERY_STRING;
+    //define several query strings selectable per run parameter -z. (1,2,3 = prepared for the dataset citibike, 4,5,6 prepared for the dataset ldbc)
+    String query = "";
+    switch (QUERY_STRING){
+      case "1":
+        query = "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id";
+        break;
+      case "2":
+        query = "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id";
+        break;
+      case "3":
+        query = "MATCH (v1:Station {cellId: 2883})-[t1:Trip]->(v2:Station)-[t2:Trip]->(v3:Station) WHERE v2.id != v1.id AND v2.id != v3.id AND v3.id != v1.id AND t1.val.precedes(t2.val) AND t1.val.lengthAtLeast(Minutes(30)) AND t2.val.lengthAtLeast(Minutes(30))";
+        break;
+      case "4":
+        query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)";
+        break;
+      case "5":
+        query = "MATCH (p:person)-[s:studyAt]->(u:university)";
+        break;
+      case "6":
+        query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))";
+        break;
     }
 
-    if (PART_FIELD == null) {
-      PART_FIELD = "id";
-    }
 
     DataSet<WithCount<GradoopId>> vertexDegreeDataSet = new VertexDegrees().execute(graph.toLogicalGraph()); //List with the Format(GraphId, degree)
     DataSet<TemporalVertex> vertexes = graph.getVertices();
     DataSet<TemporalEdge> edges = graph.getEdges();
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("SourceDegree", second.f1);
-        return first;
-      }
-    });
-    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
-      @Override
-      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
-        first.setProperty("TargetDegree", second.f1);
-        return first;
-      }
-    });
 
-    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(), vertexes , edges);
+      // calculate source and target degree of the vertices per edge
+    if (CALC_DEGREE) {
+      edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+        @Override
+        public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+          first.setProperty("SourceDegree", second.f1);
+          return first;
+        }
+      });
+      edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+        @Override
+        public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+          first.setProperty("TargetDegree", second.f1);
+          return first;
+        }
+      });
+
+      // create new graph with the degrees as properties
+      graph = conf.getTemporalGraphFactory().fromDataSets(graph.getGraphHead(), vertexes, edges);
+      //save the new graph as a file in the output directory
+      graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
+    }
     //graph vorverarbeiten 1Mal -> mehrfach (Präsentation)
 
+    //partition the graph for the selected partition strategy and the partition field
+    if (PART_FIELD == null) {
+      PART_FIELD = "id";
+    }
     final String finalPartField = PART_FIELD;
     final String finalPartStrat = PARTITION_STRAT;
 
     switch (finalPartStrat) {
+      //partitions the vertices for the given partition field per hash
       case "hash": {
         switch (finalPartField) {
           case "id":
@@ -131,6 +159,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
+      //partitions the edges for the given partition field per hash
       case "edgeHash": {
         switch (finalPartField) {
           case "id":
@@ -147,6 +176,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
+      //partitions the vertices for the given partition field per range
       case "range":{
         switch (finalPartField) {
           case "id":
@@ -163,6 +193,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
+      //partitions the edges for the given partition field per range
       case "edgeRange":{
         switch (finalPartField) {
           case "id":
@@ -179,6 +210,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         }
         break;
       }
+      //partitions the edges and vertices per Degree-Based Hashing (DBH)
       case "DBH":
         vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
           @Override
@@ -209,7 +241,9 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       default:
         break;
     }
+    //save the partitioned graph
     graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
+    
     TemporalGraphCollection results = graph.temporalQuery(query);
 
     // only count the results and write it to a csv file
@@ -234,7 +268,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
    */
   private static void writeCSV(ExecutionEnvironment env) throws IOException {
     String head = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         "Parallelism",
         "dataset",
         "query-type",
@@ -245,10 +279,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         "Runtime(s)",
         "Part.-Strat.",
         "Partitioned Field",
+        "Type",
         "Query");
 
     String tail = String
-      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
+      .format("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
         env.getParallelism(),
         INPUT_PATH,
         null,
@@ -259,6 +294,7 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         env.getLastJobExecutionResult().getNetRuntime(TimeUnit.SECONDS),
         PARTITION_STRAT,
         PART_FIELD,
+        "PatternMatching",
         QUERY_STRING);
     writeToCSVFile(head, tail);
   }

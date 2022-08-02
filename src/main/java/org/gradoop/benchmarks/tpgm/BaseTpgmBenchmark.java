@@ -16,23 +16,15 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.flink.api.common.functions.FilterFunction;
-import org.apache.flink.api.common.functions.Partitioner;
-import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.gradoop.benchmarks.AbstractRunner;
-import org.gradoop.common.model.impl.id.GradoopId;
-import org.gradoop.common.model.impl.properties.PropertyValue;
-import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.flink.util.GradoopFlinkConfig;
 import org.gradoop.temporal.io.api.TemporalDataSink;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.model.impl.TemporalGraph;
-import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
-import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -68,10 +60,18 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Option to count the result sets instead of writing them
    */
   private static final String OPTION_COUNT_RESULT = "n";
-
-  private static final String OPTION_PARTITION_STRAT = "ps";
-
-  private static final String OPTION_PARTITION_FIELD = "pf";
+  /**
+   * Option to select a custom partition strategy (hash, range, edgeHash, edgeRange, DBH)
+   */
+  private static final String OPTION_PARTITION_STRAT = "x";
+  /**
+   * Option to select a custom partition field for the given partition strategy (e.g. name)
+   */
+  private static final String OPTION_PARTITION_FIELD = "w";
+  /**
+   * Option to calculate an in- and outdegree per edge  and save the new graph to the output path (it is necessary to load a graph with these calculated degrees for the DBH partition strategy) if this parameter is not given u have to load a graph with the properties needed
+   */
+  private static final String OPTION_CALC_DEGREE = "a";
 
   /**
    * Used input path
@@ -93,11 +93,18 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Used count only flag. The graph elements will be counted only if this is set to true.
    */
   static boolean COUNT_RESULT;
-
+  /**
+   * Used calculate in- and outdegrees per edgge flag. Degrees will be calculated only if this is set to true.
+   */
+  static boolean CALC_DEGREE;
+  /**
+   * Used partition strategy.
+   */
   static String PARTITION_STRAT;
+  /**
+   * Used partition field.
+   */
   static String PART_FIELD;
-
-  // static TemporalGraph graph;
 
   static {
     OPTIONS.addRequiredOption(OPTION_INPUT_PATH, "input", true, "Path to source files.");
@@ -108,6 +115,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     OPTIONS.addOption(OPTION_COUNT_RESULT, "count", false, "Only count the results instead of writing them.");
     OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
     OPTIONS.addOption(OPTION_PARTITION_FIELD, "partField", true, "Used partition field");
+    OPTIONS.addOption(OPTION_CALC_DEGREE, "CalcDegree", false, "Used to define, if degree should be calculated");
   }
 
   /**
@@ -154,6 +162,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     OUTPUT_PATH  = cmd.getOptionValue(OPTION_OUTPUT_PATH);
     CSV_PATH     = cmd.getOptionValue(OPTION_CSV_PATH);
     COUNT_RESULT = cmd.hasOption(OPTION_COUNT_RESULT);
+    CALC_DEGREE = cmd.hasOption(OPTION_CALC_DEGREE);
     PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
     PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
   }
