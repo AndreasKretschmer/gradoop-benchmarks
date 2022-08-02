@@ -139,8 +139,6 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     if (PART_FIELD == null) {
       PART_FIELD = "id";
     }
-    // final String finalPartField = PART_FIELD;
-    // final String finalPartStrat = PARTITION_STRAT;
 
     switch (PARTITION_STRAT) {
       //partitions the vertices for the given partition field per hash
@@ -153,7 +151,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(PART_FIELD)) {
+                  return value.getPropertyValue(PART_FIELD).toString();
+                } else {
+                  return "1";
+                }
               }
             });
             break;
@@ -170,7 +172,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(PART_FIELD)) {
+                  return value.getPropertyValue(PART_FIELD).toString();
+                } else {
+                  return "1";
+                }
               }
             });
             break;
@@ -187,7 +193,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(PART_FIELD)) {
+                  return value.getPropertyValue(PART_FIELD).toString();
+                } else {
+                  return "1";
+                }
               }
             });
             break;
@@ -204,7 +214,11 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(PART_FIELD)) {
+                  return value.getPropertyValue(PART_FIELD).toString();
+                } else {
+                  return "1";
+                }
               }
             });
             break;
@@ -216,13 +230,13 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
         vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return ((key.hashCode() % numPartitions)* -1);
+            return Math.abs(key.hashCode() % numPartitions);
           }
         }, new Id<>());
         edges = graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
           @Override
           public int partition(GradoopId key, int numPartitions) {
-            return ((key.hashCode() % numPartitions) * -1);
+            return Math.abs(key.hashCode() % numPartitions);
           }
         }, new KeySelector<TemporalEdge, GradoopId>() {
           @Override
