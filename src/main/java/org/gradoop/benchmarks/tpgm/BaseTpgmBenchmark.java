@@ -106,6 +106,12 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   static String PART_FIELD;
 
+
+  static final String partitionField_name = "name";
+  static final String partitionField_regionId = "regionId";
+  static final String partitionField_gender = "gender";
+  static final String partitionField_bikeid = "bike_id";
+
   static {
     OPTIONS.addRequiredOption(OPTION_INPUT_PATH, "input", true, "Path to source files.");
     OPTIONS.addOption(OPTION_INPUT_FORMAT, "format", true, "Input graph format (csv (default), indexed).");

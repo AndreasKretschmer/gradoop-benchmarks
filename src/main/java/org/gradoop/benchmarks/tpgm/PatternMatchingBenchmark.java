@@ -140,21 +140,55 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       PART_FIELD = "id";
     }
 
-    final String partitionField = PART_FIELD;
-
     switch (PARTITION_STRAT) {
       //partitions the vertices for the given partition field per hash
       case "hash": {
-        switch (partitionField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(partitionField);
+            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
             break;
-          default:
+          case "name":
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField)) {
-                  return value.getPropertyValue(partitionField).toString();
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
@@ -166,16 +200,52 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the edges for the given partition field per hash
       case "edgeHash": {
-        switch (partitionField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByHash(partitionField);
+            edges = graph.getEdges().partitionByHash(PART_FIELD);
             break;
-          default:
+          case "name":
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                if (value.hasProperty(partitionField)) {
-                  return value.getPropertyValue(partitionField).toString();
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
@@ -187,16 +257,52 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the vertices for the given partition field per range
       case "range":{
-        switch (partitionField) {
+        switch (PART_FIELD) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(partitionField);
+            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
             break;
-          default:
+          case "name":
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField)) {
-                  return value.getPropertyValue(partitionField).toString();
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
@@ -208,16 +314,52 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       }
       //partitions the edges for the given partition field per range
       case "edgeRange":{
-        switch (partitionField) {
+        switch (PART_FIELD) {
           case "id":
-            edges = graph.getEdges().partitionByRange(partitionField);
+            edges = graph.getEdges().partitionByRange(PART_FIELD);
             break;
-          default:
+          case "name":
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                if (value.hasProperty(partitionField)) {
-                  return value.getPropertyValue(partitionField).toString();
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
