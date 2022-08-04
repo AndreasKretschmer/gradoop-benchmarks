@@ -186,18 +186,20 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
       PART_FIELD = "id";
     }
 
+    final String partitionField = PART_FIELD;
+
     switch (PARTITION_STRAT) {
       case "hash": {
-        switch (PART_FIELD) {
+        switch (partitionField) {
           case "id":
-            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
+            vertexes = graph.getVertices().partitionByHash(partitionField);
             break;
           default:
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(PART_FIELD)) {
-                  return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(partitionField)) {
+                  return value.getPropertyValue(partitionField).toString();
                 } else {
                   return "1";
                 }
@@ -208,16 +210,16 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeHash": {
-        switch (PART_FIELD) {
+        switch (partitionField) {
           case "id":
-            edges = graph.getEdges().partitionByHash(PART_FIELD);
+            edges = graph.getEdges().partitionByHash(partitionField);
             break;
           default:
             edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                if (value.hasProperty(PART_FIELD)) {
-                  return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(partitionField)) {
+                  return value.getPropertyValue(partitionField).toString();
                 } else {
                   return "1";
                 }
@@ -228,16 +230,16 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
           break;
         }
       case "range":{
-        switch (PART_FIELD) {
+        switch (partitionField) {
           case "id":
-            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
+            vertexes = graph.getVertices().partitionByRange(partitionField);
             break;
           default:
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(PART_FIELD)) {
-                  return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(partitionField)) {
+                  return value.getPropertyValue(partitionField).toString();
                 } else {
                   return "1";
                 }
@@ -248,16 +250,16 @@ public class SnapshotBenchmark extends BaseTpgmBenchmark {
         break;
       }
       case "edgeRange":{
-        switch (PART_FIELD) {
+        switch (partitionField) {
           case "id":
-            edges = graph.getEdges().partitionByRange(PART_FIELD);
+            edges = graph.getEdges().partitionByRange(partitionField);
             break;
           default:
             edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
               @Override
               public String getKey(TemporalEdge value) throws Exception {
-                if (value.hasProperty(PART_FIELD)) {
-                  return value.getPropertyValue(PART_FIELD).toString();
+                if (value.hasProperty(partitionField)) {
+                  return value.getPropertyValue(partitionField).toString();
                 } else {
                   return "1";
                 }
