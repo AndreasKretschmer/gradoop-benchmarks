@@ -16,15 +16,26 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.gradoop.benchmarks.AbstractRunner;
+import org.gradoop.common.model.impl.id.GradoopId;
+import org.gradoop.common.model.impl.properties.PropertyValue;
+import org.gradoop.flink.model.impl.functions.epgm.Id;
+import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
+import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.flink.util.GradoopFlinkConfig;
 import org.gradoop.temporal.io.api.TemporalDataSink;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.model.impl.TemporalGraph;
+import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
+import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
+import org.gradoop.temporal.util.TemporalGradoopConfig;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +83,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Option to calculate an in- and outdegree per edge  and save the new graph to the output path (it is necessary to load a graph with these calculated degrees for the DBH partition strategy) if this parameter is not given u have to load a graph with the properties needed
    */
   private static final String OPTION_CALC_DEGREE = "a";
+  private static final String OPTION_SAVE_GRAPH = "s";
 
   /**
    * Used input path
@@ -98,6 +110,10 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    */
   static boolean CALC_DEGREE;
   /**
+   * Used to define whether the graph should be saved to a file or not.
+   */
+  static boolean SAVE_GRAPH;
+  /**
    * Used partition strategy.
    */
   static String PARTITION_STRAT;
@@ -105,11 +121,21 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Used partition field.
    */
   static String PART_FIELD;
-
-
+  /**
+   * Broadcastvariable to partition Dataset by name. Is used for PART_FIELD=name.
+   */
   static final String partitionField_name = "name";
+  /**
+   * Broadcastvariable to partition Dataset by regionId. Is used for PART_FIELD=regionId.
+   */
   static final String partitionField_regionId = "regionId";
+  /**
+   * Broadcastvariable to partition Dataset by gender. Is used for PART_FIELD=gender.
+   */
   static final String partitionField_gender = "gender";
+  /**
+   * Broadcastvariable to partition Dataset by bike_id. Is used for PART_FIELD=bike_id.
+   */
   static final String partitionField_bikeid = "bike_id";
 
   static {
@@ -171,6 +197,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     CALC_DEGREE = cmd.hasOption(OPTION_CALC_DEGREE);
     PARTITION_STRAT = cmd.getOptionValue(OPTION_PARTITION_STRAT);
     PART_FIELD = cmd.getOptionValue(OPTION_PARTITION_FIELD);
+    SAVE_GRAPH = cmd.hasOption(OPTION_SAVE_GRAPH);
   }
 
   /**
@@ -192,5 +219,322 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     }
     Files.write(path, linesToWrite, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
       StandardOpenOption.APPEND);
+  }
+
+  /**
+   * Calculates the degree of the source and target vertex of an edge.
+   * The calculated degrees gets saved as properties (SourceDegree, TargetDegree) of the edge.
+   *
+   * @param conf the temporal gradoop config
+   * @param inputGraph the temporal graph to calculate and write the degrees to
+   * @return returns a new temporal graph with the calculated degrees per edge
+   * @throws Exception if an error occures while calculating the degrees
+   */
+  static TemporalGraph CalculateSourceAndTargetDegrees(TemporalGradoopConfig conf, TemporalGraph inputGraph) throws Exception{
+    DataSet<WithCount<GradoopId>> vertexDegreeDataSet = new VertexDegrees().execute(inputGraph.toLogicalGraph()); //List with the Format(GraphId, degree)
+    DataSet<TemporalVertex> vertexes = inputGraph.getVertices();
+    DataSet<TemporalEdge> edges = inputGraph.getEdges();
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getSourceId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("SourceDegree", second.f1);
+        return first;
+      }
+    });
+    edges = edges.join(vertexDegreeDataSet).where(v -> v.getTargetId()).equalTo(0).with(new JoinFunction<TemporalEdge, WithCount<GradoopId>, TemporalEdge>() {
+      @Override
+      public TemporalEdge join(TemporalEdge first, WithCount<GradoopId> second) throws Exception {
+        first.setProperty("TargetDegree", second.f1);
+        return first;
+      }
+    });
+
+    // create new graph with the degrees as properties
+    TemporalGraph graph = conf.getTemporalGraphFactory().fromDataSets(inputGraph.getGraphHead(), vertexes, edges);
+    //save the new graph as a file in the output directory
+    graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
+    return graph;
+  }
+
+  /**
+   * Partitions a given graph for a given partition strategy and a given partition field
+   * The partition strategy and the partition field can be defined as run parameter (-x and -w)
+   *
+   * @param conf the temporal gradoop config
+   * @param graph the temporal graph that should be partitioned
+   * @return returns a new partitioned temporal graph
+   * @throws Exception if an error occures while calculating the degrees
+   */
+  static TemporalGraph PartitionGraph(TemporalGradoopConfig conf, TemporalGraph graph) throws Exception {
+    DataSet<TemporalVertex> vertexes = graph.getVertices();
+    DataSet<TemporalEdge> edges = graph.getEdges();
+    switch (PARTITION_STRAT) {
+      //partitions the vertices for the given partition field per hash
+      case "hash": {
+        switch (PART_FIELD) {
+          case "id":
+            vertexes = graph.getVertices().partitionByHash(PART_FIELD);
+            break;
+          case "name":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+        }
+        break;
+      }
+      //partitions the edges for the given partition field per hash
+      case "edgeHash": {
+        switch (PART_FIELD) {
+          case "id":
+            edges = graph.getEdges().partitionByHash(PART_FIELD);
+            break;
+          case "name":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+        }
+        break;
+      }
+      //partitions the vertices for the given partition field per range
+      case "range":{
+        switch (PART_FIELD) {
+          case "id":
+            vertexes = graph.getVertices().partitionByRange(PART_FIELD);
+            break;
+          case "name":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
+              @Override
+              public String getKey(TemporalVertex value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+        }
+        break;
+      }
+      //partitions the edges for the given partition field per range
+      case "edgeRange":{
+        switch (PART_FIELD) {
+          case "id":
+            edges = graph.getEdges().partitionByRange(PART_FIELD);
+            break;
+          case "name":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_name)) {
+                  return value.getPropertyValue(partitionField_name).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "regionId":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_regionId)) {
+                  return value.getPropertyValue(partitionField_regionId).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "gender":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_gender)) {
+                  return value.getPropertyValue(partitionField_gender).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+          case "bike_id":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, String>() {
+              @Override
+              public String getKey(TemporalEdge value) throws Exception {
+                if (value.hasProperty(partitionField_bikeid)) {
+                  return value.getPropertyValue(partitionField_bikeid).toString();
+                } else {
+                  return "1";
+                }
+              }
+            });
+            break;
+        }
+        break;
+      }
+      //partitions the edges and vertices per Degree-Based Hashing (DBH)
+      case "DBH": {
+        vertexes = graph.getVertices().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return Math.abs(key.hashCode() % numPartitions);
+          }
+        }, new Id<>());
+        edges = graph.getEdges().partitionCustom(new Partitioner<GradoopId>() {
+          @Override
+          public int partition(GradoopId key, int numPartitions) {
+            return Math.abs(key.hashCode() % numPartitions);
+          }
+        }, new KeySelector<TemporalEdge, GradoopId>() {
+          @Override
+          public GradoopId getKey(TemporalEdge value) throws Exception {
+            PropertyValue SourceDegree = value.getPropertyValue("SourceDegree");
+            PropertyValue TargetDegree = value.getPropertyValue("TargetDegree");
+
+            if (SourceDegree.getLong() > TargetDegree.getLong()) {
+              return value.getSourceId();
+            }
+            else{
+              return value.getTargetId();
+            }
+          }
+        });
+        break;
+      }
+      default:
+        break;
+    }
+
+    graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
+    //save the partitioned graph
+    if (SAVE_GRAPH) {
+      graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
+    }
+    return(graph);
   }
 }
