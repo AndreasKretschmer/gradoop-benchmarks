@@ -16,24 +16,14 @@
 package org.gradoop.benchmarks.tpgm;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.flink.api.common.functions.JoinFunction;
-import org.apache.flink.api.common.functions.Partitioner;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
-import org.gradoop.common.model.impl.id.GradoopId;
-import org.gradoop.common.model.impl.properties.PropertyValue;
-import org.gradoop.flink.model.impl.functions.epgm.Id;
-import org.gradoop.flink.model.impl.operators.statistics.VertexDegrees;
-import org.gradoop.flink.model.impl.tuples.WithCount;
 import org.gradoop.temporal.io.impl.csv.TemporalCSVDataSink;
 import org.gradoop.temporal.model.impl.TemporalGraph;
 import org.gradoop.temporal.model.impl.TemporalGraphCollection;
-import org.gradoop.temporal.model.impl.pojo.TemporalEdge;
-import org.gradoop.temporal.model.impl.pojo.TemporalVertex;
 import org.gradoop.temporal.util.TemporalGradoopConfig;
 
 import java.io.IOException;
@@ -110,6 +100,9 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
     // calculate source and target degree of the vertices per edge
     if (CALC_DEGREE) {
       graph = CalculateSourceAndTargetDegrees(conf, graph);
+    }
+    if (SAVE_GRAPH) {
+      graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf), true);
     }
 
     //partition the graph for the selected partition strategy and the partition field

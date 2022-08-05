@@ -533,9 +533,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
 
     graph = conf.getTemporalGraphFactory().fromDataSets( graph.getGraphHead(),vertexes , edges);
     //save the partitioned graph
-    if (SAVE_GRAPH) {
-      graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
-    }
+
     return(graph);
   }
 }
