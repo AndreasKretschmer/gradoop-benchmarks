@@ -148,6 +148,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     OPTIONS.addOption(OPTION_PARTITION_STRAT, "partStrat", true, "Used partition strategy");
     OPTIONS.addOption(OPTION_PARTITION_FIELD, "partField", true, "Used partition field");
     OPTIONS.addOption(OPTION_CALC_DEGREE, "CalcDegree", false, "Used to define, if degree should be calculated");
+    OPTIONS.addOption(OPTION_SAVE_GRAPH, "Save Graph", false, "Used to define, whether the new calculated graph should be saved");
   }
 
   /**
