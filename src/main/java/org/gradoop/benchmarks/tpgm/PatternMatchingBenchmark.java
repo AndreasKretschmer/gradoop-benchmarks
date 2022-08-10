@@ -79,19 +79,25 @@ public class PatternMatchingBenchmark extends BaseTpgmBenchmark {
       temp_query = "MATCH (s1:station)-[t:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE t.bike_id = t2.bike_id";
         break;
       case "2":
-      temp_query = "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id";
+      temp_query = "MATCH (s1:station)-[t1:trip]->(s2:station)-[t2:trip]->(s3:station) WHERE s1.id = s2.id AND t1.bike_id = t2.bike_id";
         break;
       case "3":
       temp_query = "MATCH (v1:Station {cellId: 2883})-[t1:Trip]->(v2:Station)-[t2:Trip]->(v3:Station) WHERE v2.id != v1.id AND v2.id != v3.id AND v3.id != v1.id AND t1.val.precedes(t2.val) AND t1.val.lengthAtLeast(Minutes(30)) AND t2.val.lengthAtLeast(Minutes(30))";
         break;
       case "4":
-      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post)";
+      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01))";
         break;
       case "5":
       temp_query = "MATCH (p:person)-[s:studyAt]->(u:university)";
         break;
       case "6":
-      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) WHERE l.val_from.after(Timestamp(2012-06-01)) AND l.val_from.before(Timestamp(2012-06-02))";
+      temp_query = "MATCH (p:person)-[l:likes]->(c:comment), (c)-[r:replyOf]->(po:post) " +
+              "WHERE l.val_from.after(Timestamp(2012-06-01)) AND " +
+              "      l.val_from.before(Timestamp(2012-06-02)) AND " +
+              "      c.val_from.after(Timestamp(2012-05-30)) AND " +
+              "      c.val_from.before(Timestamp(2012-06-02)) AND " +
+              "      po.val_from.after(Timestamp(2012-05-30)) AND " +
+              "      po.val_from.before(Timestamp(2012-06-02))";
         break;
     }
 

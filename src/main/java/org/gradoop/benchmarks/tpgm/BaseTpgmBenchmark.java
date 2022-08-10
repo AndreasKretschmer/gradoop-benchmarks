@@ -43,6 +43,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -83,6 +85,9 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
    * Option to calculate an in- and outdegree per edge  and save the new graph to the output path (it is necessary to load a graph with these calculated degrees for the DBH partition strategy) if this parameter is not given u have to load a graph with the properties needed
    */
   private static final String OPTION_CALC_DEGREE = "a";
+  /**
+   * Option to define whether the new calculated degrees should be saved to a file
+   */
   private static final String OPTION_SAVE_GRAPH = "s";
 
   /**
@@ -253,7 +258,7 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
     // create new graph with the degrees as properties
     TemporalGraph graph = conf.getTemporalGraphFactory().fromDataSets(inputGraph.getGraphHead(), vertexes, edges);
     //save the new graph as a file in the output directory
-    graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
+    //graph.writeTo(new TemporalCSVDataSink(OUTPUT_PATH, conf));
     return graph;
   }
 
@@ -288,36 +293,19 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
               }
             });
             break;
-          case "gender":
+          case "label":
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField_gender)) {
-                  return value.getPropertyValue(partitionField_gender).toString();
-                } else {
-                  return "1";
-                }
+                return(value.getLabel());
               }
             });
-            break;
           case "regionId":
             vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
                 if (value.hasProperty(partitionField_regionId)) {
                   return value.getPropertyValue(partitionField_regionId).toString();
-                } else {
-                  return "1";
-                }
-              }
-            });
-            break;
-          case "bike_id":
-            vertexes = graph.getVertices().partitionByHash(new KeySelector<TemporalVertex, String>() {
-              @Override
-              public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField_bikeid)) {
-                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
@@ -381,6 +369,23 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
               }
             });
             break;
+          case "day":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, Long>() {
+              @Override
+              public Long getKey(TemporalEdge value) throws Exception {
+                return(value.getValidFrom() / (1000*60*60*24));
+              }
+            });
+            break;
+          case "year":
+            edges = graph.getEdges().partitionByHash(new KeySelector<TemporalEdge, Integer>() {
+              @Override
+              public Integer getKey(TemporalEdge value) throws Exception {
+                Integer year = LocalDateTime.ofEpochSecond(value.getValidFrom() / 1000, 0, ZoneOffset.UTC).getYear();
+                return(year);
+              }
+            });
+            break;
         }
         break;
       }
@@ -402,36 +407,12 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
               }
             });
             break;
-          case "gender":
-            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
-              @Override
-              public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField_gender)) {
-                  return value.getPropertyValue(partitionField_gender).toString();
-                } else {
-                  return "1";
-                }
-              }
-            });
-            break;
           case "regionId":
             vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
               @Override
               public String getKey(TemporalVertex value) throws Exception {
                 if (value.hasProperty(partitionField_regionId)) {
                   return value.getPropertyValue(partitionField_regionId).toString();
-                } else {
-                  return "1";
-                }
-              }
-            });
-            break;
-          case "bike_id":
-            vertexes = graph.getVertices().partitionByRange(new KeySelector<TemporalVertex, String>() {
-              @Override
-              public String getKey(TemporalVertex value) throws Exception {
-                if (value.hasProperty(partitionField_bikeid)) {
-                  return value.getPropertyValue(partitionField_bikeid).toString();
                 } else {
                   return "1";
                 }
@@ -492,6 +473,23 @@ abstract class BaseTpgmBenchmark extends AbstractRunner {
                 } else {
                   return "1";
                 }
+              }
+            });
+            break;
+          case "day":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, Long>() {
+              @Override
+              public Long getKey(TemporalEdge value) throws Exception {
+                return(value.getValidFrom() / (1000*60*60*24));
+              }
+            });
+            break;
+          case "year":
+            edges = graph.getEdges().partitionByRange(new KeySelector<TemporalEdge, Integer>() {
+              @Override
+              public Integer getKey(TemporalEdge value) throws Exception {
+                Integer year = LocalDateTime.ofEpochSecond(value.getValidFrom() / 1000, 0, ZoneOffset.UTC).getYear();
+                return(year);
               }
             });
             break;
